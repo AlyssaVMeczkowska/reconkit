@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-reconkit - ReconKit — Automated Recon & Enumeration
+ReconKit — Automated Recon & Enumeration
 github.com/AlyssaVMeczkowska
 
 Usage:
