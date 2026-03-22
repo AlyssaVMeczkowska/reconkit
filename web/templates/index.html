@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ReconKit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    :root {
+      --bg:        #0a0c0f;
+      --bg2:       #0f1217;
+      --bg3:       #151921;
+      --border:    #1e2530;
+      --border2:   #252f3d;
+      --cyan:      #00d4ff;
+      --green:     #00ff88;
+      --magenta:   #d459ff;
+      --electric_orange: #ff6b35;
+      --acid_green: #39ff14;
+      --gold: #ffaa00;
+      --cream: #f5e6d3;
+      --yellow:    #ffcc00;
+      --orange:    #ff8c42;
+      --red:       #a7000e;
+      --white:     #e8edf5;
+      --dim:       #4a5568;
+      --dim2:      #2d3748;
+      --glow-cyan: 0 0 20px rgba(0,212,255,0.3);
+      --glow-red: 0 0 20px rgba(255, 0, 0, 0.482);
+      --glow-mag:  0 0 20px rgba(212,89,255,0.3);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      padding: 3rem 0 2.5rem;
+    }
+
+    .logo-ascii {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(0.38rem, 1.1vw, 0.62rem);
+      line-height: 1.2;
+      color: var(--red);
+      text-shadow: var(--glow-red);
+      letter-spacing: 0.02em;
+      white-space: pre;
+      display: inline-block;
+      animation: flicker 8s infinite;
+    }
+
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96% { opacity: 0.85; }
+      97% { opacity: 1; }
+      98% { opacity: 0.9; }
+    }
+
+    .tagline {
+      margin-top: 1.2rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .tagline .t-mag   { color: var(--magenta); }
+    .tagline .t-cyan  { color: var(--cyan); }
+    .tagline .t-green { color: var(--green); }
+    .tagline .t-yel   { color: var(--yellow); }
+    .tagline .t-dim   { color: var(--dim); }
+    .tagline .t-elec   { color: var(--electric_orange); }
+    .tagline .t-acid   { color: var(--acid_green); }
+    .tagline .t-gold   { color: var(--gold); }
+    .tagline .t-cream  { color: var(--cream); }
+
+    .github-link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--dim);
+      text-decoration: none;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+    .github-link span { color: var(--red); }
+    .github-link:hover { color: var(--white); }
+
+    /* ── Control panel ── */
+    .panel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.8rem 2rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+      opacity: 0.6;
+    }
+
+    .panel-title {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 1.2rem;
+    }
+
+    /* ── IP input row ── */
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+
+    .input-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    .input-prefix {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--red);
+      font-size: 0.85rem;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      color: var(--white);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      padding: 0.85rem 1rem 0.85rem 2.4rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--red);
+      box-shadow: var(--glow-red);
+    }
+
+    input[type="text"]::placeholder { color: var(--dim); }
+
+    /* ── Flags ── */
+    .flags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+
+    .flag-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      color: var(--dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.05em;
+      user-select: none;
+    }
+    .flag-btn:hover { border-color: var(--red); color: var(--red); }
+    .flag-btn.active {
+      background: rgba(0,212,255,0.08);
+      border-color: var(--red);
+      color: var(--red);
+      box-shadow: 0 0 12px rgba(255,71,87,0.2);
+    }
+
+    .domain-wrap {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .domain-wrap.show { display: block; }
+
+    /* ── Run button ── */
+    .run-btn {
+      background: transparent;
+      border: 1px solid var(--red);
+      border-radius: 3px;
+      color: var(--red);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      padding: 0 2rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .run-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--red);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .run-btn:hover::before { opacity: 0.1; }
+    .run-btn:hover { box-shadow: var(--glow-red); }
+
+    .run-btn:disabled {
+      border-color: var(--dim2);
+      color: var(--dim);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .run-btn:disabled::before { display: none; }
+
+    .stop-btn {
+      border-color: var(--red);
+      color: var(--red);
+    }
+    .stop-btn:hover { box-shadow: 0 0 16px rgba(255,71,87,0.3); }
+    .stop-btn::before { background: var(--red); }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      margin-bottom: 1rem;
+      min-height: 1.4rem;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--dim2);
+      flex-shrink: 0;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .status-dot.running {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .status-dot.done   { background: var(--white); box-shadow: 0 0 8px var(--white); }
+    .status-dot.error  { background: var(--red);  box-shadow: 0 0 8px var(--red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    .status-text { color: var(--white); }
+    .status-timer { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+    /* ── Terminal output ── */
+    .terminal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .term-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .term-dot.r { background: #ff5f56; }
+    .term-dot.y { background: #ffbd2e; }
+    .term-dot.g { background: #27c93f; }
+
+    .terminal-label {
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-left: auto;
+    }
+
+    .terminal-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: 1rem;
+    }
+
+    .term-action {
+      background: none;
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+    .term-action:hover { color: var(--red); border-color: var(--red); }
+
+    .output-area {
+      height: 520px;
+      overflow-y: auto;
+      padding: 1rem 1.2rem;
+      font-size: 0.75rem;
+      line-height: 1.7;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    .output-area::-webkit-scrollbar { width: 4px; }
+    .output-area::-webkit-scrollbar-track { background: transparent; }
+    .output-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      color: var(--dim);
+      font-size: 0.7rem;
+    }
+
+    .empty-icon {
+      font-size: 2rem;
+      opacity: 0.3;
+    }
+
+    /* ── Output line types ── */
+    .line { display: flex; gap: 0.75rem; animation: fadeIn 0.1s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; } }
+
+    .line-ts {
+      color: var(--dim);
+      font-size: 0.62rem;
+      flex-shrink: 0;
+      padding-top: 0.05rem;
+      min-width: 5.5rem;
+    }
+
+    .line-content { flex: 1; word-break: break-all; }
+
+    .line.finding  .line-content { color: var(--magenta); font-weight: 600; }
+    .line.success  .line-content { color: var(--green); }
+    .line.warn     .line-content { color: var(--yellow); }
+    .line.error    .line-content { color: var(--red); }
+    .line.section  .line-content { color: var(--red); font-weight: 600; border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.25rem; }
+    .line.report   .line-content { color: var(--red); }
+    .line.info     .line-content { color: var(--dim); }
+    .line.output   .line-content { color: #8899aa; }
+
+    /* ANSI color classes */
+    .c-red     { color: var(--red); }
+    .c-green   { color: var(--green); }
+    .c-yellow  { color: var(--yellow); }
+    .c-blue    { color: #6699ff; }
+    .c-magenta { color: var(--magenta); }
+    .c-cyan    { color: var(--cyan); }
+    .c-white   { color: var(--white); }
+    .c-bold    { font-weight: 700; }
+    .c-dim     { color: var(--dim); }
+
+    /* ── Findings sidebar ── */
+    .findings-panel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-top: 1.2rem;
+      overflow: hidden;
+    }
+
+    .findings-header {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 0.65rem 1rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--magenta);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .findings-count {
+      background: var(--magenta);
+      color: #000;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 2px;
+      margin-left: auto;
+    }
+
+    .findings-list {
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 0.6rem 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+
+    .finding-item {
+      padding: 0.3rem 1rem;
+      font-size: 0.68rem;
+      color: var(--magenta);
+      border-left: 2px solid transparent;
+      transition: all 0.1s;
+      animation: fadeIn 0.15s ease;
+    }
+
+    .finding-item:hover {
+      background: rgba(212,89,255,0.05);
+      border-left-color: var(--magenta);
+    }
+
+    .finding-item.success { color: var(--green); }
+    .finding-item.success:hover { background: rgba(0,255,136,0.05); border-left-color: var(--green); }
+    .finding-item.warn    { color: var(--yellow); }
+
+    .no-findings {
+      padding: 1.2rem;
+      font-size: 0.65rem;
+      color: var(--dim);
+      text-align: center;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 2rem 0 0;
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 0.08em;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .input-row { flex-direction: column; }
+      .run-btn { padding: 0.85rem; }
+      .logo-ascii { font-size: 0.28rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-ascii">
+  ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗██╗  ██╗██╗████████╗
+  ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║██║ ██╔╝██║╚══██╔══╝
+  ██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║█████╔╝ ██║   ██║
+  ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║██╔═██╗ ██║   ██║
+  ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║██║  ██╗██║   ██║
+  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝   ╚═╝</div>
+    <div class="tagline">
+      <span class="t-cream">Automated Recon</span>
+    </div>
+    <a class="github-link" href="https://github.com/AlyssaVMeczkowska" target="_blank">
+      github.com/<span>AlyssaVMeczkowska</span>
+    </a>
+  </header>
+
+  <!-- Control Panel -->
+  <div class="panel">
+    <div class="panel-title">// target configuration</div>
+
+    <div class="input-row">
+      <div class="input-wrap">
+        <span class="input-prefix">$</span>
+        <input type="text" id="ip-input" placeholder="10.10.10.5" autocomplete="off" spellcheck="false" />
+      </div>
+      <button class="run-btn" id="run-btn" onclick="startScan()">RUN SCAN</button>
+    </div>
+
+    <div class="flags">
+      <button class="flag-btn" data-flag="quick"  onclick="toggleFlag(this)">--quick</button>
+      <button class="flag-btn warn-flag" data-flag="vuln" onclick="toggleFlag(this)">--vuln</button>
+      <button class="flag-btn" data-flag="resume" onclick="toggleFlag(this)">--resume</button>
+      <button class="flag-btn" data-flag="domain" onclick="toggleDomain(this)">--domain</button>
+    </div>
+
+    <div class="domain-wrap" id="domain-wrap">
+      <div class="input-wrap" style="margin-top:0">
+        <span class="input-prefix" style="color:var(--dim)">domain:</span>
+        <input type="text" id="domain-input" placeholder="example.thm" style="padding-left:5.5rem" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span class="status-text" id="status-text">ready</span>
+    <span class="status-timer" id="status-timer"></span>
+  </div>
+
+  <!-- Terminal -->
+  <div class="terminal">
+    <div class="terminal-header">
+      <div class="term-dot r"></div>
+      <div class="term-dot y"></div>
+      <div class="term-dot g"></div>
+      <span class="terminal-label">output</span>
+      <div class="terminal-actions">
+        <button class="term-action" onclick="clearOutput()">clear</button>
+        <button class="term-action" onclick="copyOutput()">copy</button>
+        <button class="term-action" id="autoscroll-btn" onclick="toggleAutoscroll()">autoscroll: on</button>
+      </div>
+    </div>
+    <div class="output-area" id="output">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">⬡</div>
+        <div>enter a target ip and run the scan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Findings panel -->
+  <div class="findings-panel">
+    <div class="findings-header">
+      ★ findings
+      <span class="findings-count" id="findings-count">0</span>
+    </div>
+    <div class="findings-list" id="findings-list">
+      <div class="no-findings" id="no-findings">no findings yet</div>
+    </div>
+  </div>
+
+  <footer>
+    reconkit — use on authorized targets only
+  </footer>
+
+</div>
+
+<script>
+  const socket = io();
+  let scanning   = false;
+  let autoscroll = true;
+  let timerInt   = null;
+  let startTime  = null;
+  let findings   = [];
+  let rawLines   = [];
+
+  // ── Flag toggles ─────────────────────────
+  function toggleFlag(btn) {
+    btn.classList.toggle('active');
+  }
+
+  function toggleDomain(btn) {
+    btn.classList.toggle('active');
+    document.getElementById('domain-wrap').classList.toggle('show', btn.classList.contains('active'));
+  }
+
+  function getFlags() {
+    const flags = {};
+    document.querySelectorAll('.flag-btn.active').forEach(b => {
+      flags[b.dataset.flag] = true;
+    });
+    if (flags.domain) {
+      flags.domain = document.getElementById('domain-input').value.trim();
+    }
+    return flags;
+  }
+
+  // ── Scan control ──────────────────────────
+  function startScan() {
+    const target = document.getElementById('ip-input').value.trim();
+    if (!target) { flashInput(); return; }
+    if (scanning) { stopScan(); return; }
+
+    clearOutput();
+    scanning = true;
+    startTime = Date.now();
+
+    setStatus('running', `scanning ${target}...`);
+    startTimer();
+
+    const btn = document.getElementById('run-btn');
+    btn.textContent = 'STOP';
+    btn.classList.add('stop-btn');
+
+    socket.emit('start_scan', { target, ...getFlags() });
+  }
+
+  function stopScan() {
+    socket.emit('stop_scan');
+  }
+
+  // ── Output rendering ──────────────────────
+  function appendLine(data) {
+    const empty = document.getElementById('empty-state');
+    if (empty) empty.remove();
+
+    const out  = document.getElementById('output');
+    const div  = document.createElement('div');
+    div.className = `line ${data.type}`;
+    div.innerHTML = `
+      <span class="line-ts">${data.ts}</span>
+      <span class="line-content">${data.html}</span>
+    `;
+    out.appendChild(div);
+    rawLines.push(data.raw);
+
+    if (data.type === 'finding') addFinding(data.raw, data.type);
+
+    if (autoscroll) out.scrollTop = out.scrollHeight;
+  }
+
+  function addFinding(text, type) {
+    const noF = document.getElementById('no-findings');
+    if (noF) noF.remove();
+
+    findings.push(text);
+    document.getElementById('findings-count').textContent = findings.length;
+
+    const list = document.getElementById('findings-list');
+    const item = document.createElement('div');
+    item.className = `finding-item ${type}`;
+    item.textContent = text.replace(/\[★\]\s*/, '').substring(0, 120);
+    list.appendChild(item);
+    list.scrollTop = list.scrollHeight;
+  }
+
+  // ── Status helpers ────────────────────────
+  function setStatus(state, msg) {
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    dot.className  = `status-dot ${state}`;
+    text.textContent = msg;
+  }
+
+  function startTimer() {
+    clearInterval(timerInt);
+    timerInt = setInterval(() => {
+      const s = Math.floor((Date.now() - startTime) / 1000);
+      document.getElementById('status-timer').textContent =
+        `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    }, 1000);
+  }
+
+  function stopTimer() { clearInterval(timerInt); }
+
+  function resetBtn() {
+    scanning = false;
+    const btn = document.getElementById('run-btn');
+    btn.textContent = 'RUN SCAN';
+    btn.classList.remove('stop-btn');
+    btn.disabled = false;
+  }
+
+  // ── Utility ───────────────────────────────
+  function clearOutput() {
+    const out = document.getElementById('output');
+    out.innerHTML = '<div class="empty-state" id="empty-state"><div class="empty-icon">⬡</div><div>enter a target ip and run the scan</div></div>';
+    rawLines = [];
+    findings = [];
+    document.getElementById('findings-count').textContent = '0';
+    document.getElementById('findings-list').innerHTML = '<div class="no-findings" id="no-findings">no findings yet</div>';
+    document.getElementById('status-timer').textContent = '';
+  }
+
+  function copyOutput() {
+    navigator.clipboard.writeText(rawLines.join('\n'));
+  }
+
+  function toggleAutoscroll() {
+    autoscroll = !autoscroll;
+    document.getElementById('autoscroll-btn').textContent = `autoscroll: ${autoscroll ? 'on' : 'off'}`;
+  }
+
+  function flashInput() {
+    const inp = document.getElementById('ip-input');
+    inp.style.borderColor = 'var(--red)';
+    inp.style.boxShadow   = '0 0 12px rgba(255,71,87,0.4)';
+    setTimeout(() => {
+      inp.style.borderColor = '';
+      inp.style.boxShadow   = '';
+    }, 600);
+  }
+
+  // ── Enter key ─────────────────────────────
+  document.getElementById('ip-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') startScan();
+  });
+
+  // ── Socket events ─────────────────────────
+  socket.on('scan_start', data => {
+    appendLine({ type: 'info', ts: now(), html: `<span class="c-dim">$ python3 reconkit.py ${data.target}</span>`, raw: '' });
+  });
+
+  socket.on('scan_line', data => appendLine(data));
+
+  socket.on('scan_done', data => {
+    stopTimer();
+    resetBtn();
+    const elapsed = document.getElementById('status-timer').textContent;
+    setStatus('done', `done — ${data.target} — ${elapsed}`);
+    appendLine({
+      type: 'success',
+      ts: now(),
+      html: `<span class="c-green">✓ scan complete — results in ${data.outdir}/</span>`,
+      raw: ''
+    });
+  });
+
+  socket.on('scan_stopped', () => {
+    stopTimer();
+    resetBtn();
+    setStatus('', 'stopped');
+    appendLine({ type: 'warn', ts: now(), html: '<span class="c-yellow">scan stopped by user</span>', raw: '' });
+  });
+
+  socket.on('scan_error', data => {
+    stopTimer();
+    resetBtn();
+    setStatus('error', `error: ${data.msg}`);
+    appendLine({ type: 'error', ts: now(), html: `<span class="c-red">✗ ${data.msg}</span>`, raw: data.msg });
+  });
+
+  function now() {
+    return new Date().toTimeString().slice(0,8);
+  }
+</script>
+</body>
+</html>
