@@ -1,8 +1,8 @@
 # 🔍 ReconKit
 
-> Automated recon & enumeration script for CTFs / TryHackMe
+> Automated recon & enumeration script for CTFs
 
-ReconKit chains together the most common enumeration tools into a single command. Point it at an IP, walk away, and come back to a fully organized output folder with color-coded live findings as everything runs.
+ReconKit chains together the most common enumeration tools into a single command. Point it at an IP, walk away, and come back to a fully organized output folder with color-coded live findings as everything runs. Also includes an optional local web UI for browser-based scanning.
 
 ---
 
@@ -17,7 +17,7 @@ ReconKit chains together the most common enumeration tools into a single command
 - **Nuclei** — CVE, misconfiguration, and exposure template scanning
 - **Well-known file fetch** — auto-grabs `robots.txt`, `sitemap.xml`, `.htaccess`, `security.txt`
 - **curl header grab** — highlights `Server`, `X-Powered-By`, `Set-Cookie`, auth headers
-- **Login page detection** — parses dir enum output for login paths, checks HTTP Basic Auth with default creds if challenged (401), flags form-based logins for manual review
+- **Login page detection** — parses dir enum output for login-looking paths, checks HTTP Basic Auth with default creds if challenged (401), flags form-based logins for manual review
 - **WordPress detection → wpscan** — auto-triggered if WhatWeb finds WordPress
 - **SMB** — enum4linux, smbclient share listing, nmap SMB vuln/enum scripts
 - **FTP** — anonymous login check via nmap scripts
@@ -32,9 +32,11 @@ ReconKit chains together the most common enumeration tools into a single command
 - **Gowitness** — screenshots of discovered web services
 - **Desktop notifications** — `notify-send` pops on scan start, port discovery, web enum completion, and full scan done
 - **Resume mode** — skips phases whose output files already exist
+- **Quick mode** — fast initial recon, skips nikto/sqlmap/vuln scripts
 - **Per-phase elapsed time** — know exactly where your time is going
 - **Organized output** — everything saved to `recon_for_<TARGET_IP>/` with a summary `report.txt`
 - **Live color-coded output** — findings stream in real time, interesting lines re-highlighted as they arrive
+- **Web UI** — optional local browser interface with live streaming output, findings panel, and flag toggles
 
 ---
 
@@ -71,6 +73,8 @@ recon_for_<TARGET_IP>/
 
 ## Usage
 
+### CLI
+
 ```bash
 # Basic recon
 python3 reconkit.py <TARGET_IP>
@@ -98,6 +102,26 @@ chmod +x reconkit.py
 sudo mv reconkit.py /usr/local/bin/reconkit
 reconkit <TARGET_IP>
 ```
+
+### Web UI
+
+A local browser interface that streams output live with color-coded findings.
+
+```bash
+cd web
+pip3 install -r requirements.txt
+python3 app.py
+# open http://127.0.0.1:5001
+```
+
+Features:
+- Enter an IP and hit Run — output streams live to the terminal panel
+- `[★]` findings automatically collected into a separate findings panel
+- Flag toggles for `--quick`, `--vuln`, `--resume`, `--domain`
+- Stop button, autoscroll toggle, copy output
+- Live elapsed timer and status indicator
+
+> The web UI is intended for local use only. Do not expose it publicly.
 
 ---
 
@@ -129,9 +153,16 @@ reconkit <TARGET_IP>
 | searchsploit | Exploit-DB lookup | `sudo apt install exploitdb` |
 | curl | Header grabbing | `sudo apt install curl` |
 
+**Web UI dependencies:**
+```bash
+pip3 install flask flask-socketio eventlet
+```
+
 **Wordlists** (auto-detected across common locations):
 - SecLists — `sudo apt install seclists`
 - dirbuster wordlists — `sudo apt install dirb`
+
+Wordlist paths are resolved automatically across `/usr/share/wordlists`, `/usr/share/seclists`, `/opt/wordlists`, and `~/wordlists` — no config edits needed.
 
 ---
 
@@ -151,8 +182,9 @@ reconkit <TARGET_IP>
 
 - Designed for authorized use on machines you own or have explicit permission to test (CTF/lab environments)
 - Vuln mode (`--vuln`) runs noisier, slower scans — use intentionally
-- Form-based login pages are flagged for manual review; the script does not attempt blind POST bruteforce (use hydra for that with known field names)
+- Login page detection only attempts HTTP Basic Auth brute force — form-based logins are flagged for manual review (use hydra with known field names)
 - All tools are optional — reconkit checks for each one at runtime and skips gracefully if not installed
+- RustScan handles port discovery; nmap handles service detection and NSE scripts
 
 ---
 
