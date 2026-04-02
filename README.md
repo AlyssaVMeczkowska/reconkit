@@ -1,4 +1,4 @@
-# 🔍 ReconKit
+# ReconKit
 
 > Automated recon & enumeration script for CTFs
 
