@@ -8,7 +8,7 @@ ReconKit utilizes the most common enumeration tools. Enter an IP and get a fully
 
 ## Features
 
-- **RustScan → Nmap**:fast TCP port discovery piped into full service/script detection
+- **RustScan to Nmap**: fast TCP port discovery piped into full service/script detection
 - **UDP scan**: automatic top-20 UDP sweep, SNMP flagged if found
 - **Feroxbuster / Gobuster**: recursive directory enumeration (feroxbuster preferred, gobuster as fallback)
 - **WhatWeb**: full tech stack fingerprinting
@@ -22,13 +22,13 @@ ReconKit utilizes the most common enumeration tools. Enter an IP and get a fully
 - **SMB**: enum4linux, smbclient share listing, nmap SMB vuln/enum scripts
 - **FTP**: anonymous login check via nmap scripts
 - **SSH**: auth methods and hostkey enumeration
-- **MySQL / PostgreSQL**: nmap sql scripts
+- **MySQL/PostgreSQL**: nmap sql scripts
 - **Redis**: unauthenticated access check
 - **MongoDB**: database enumeration
 - **SNMP**: snmpwalk against common community strings (public/private/manager)
 - **Kerberos**: kerbrute user enum + nmap scripts if port 88 is open
 - **Searchsploit**: automatically runs against nmap XML output
-- **Subdomain / vhost enum**: gobuster DNS + ffuf vhost fuzzing (with `--domain`)
+- **Subdomain/vhost enum**: gobuster DNS + ffuf vhost fuzzing (with `--domain`)
 - **Gowitness**: screenshots of discovered web services
 - **Desktop notifications**: `notify-send` pops on scan start, port discovery, web enum completion, and full scan done
 - **Resume mode**: skips phases whose output files already exist
@@ -100,13 +100,6 @@ python3 app.py
 # open http://127.0.0.1:5001
 ```
 
-Features:
-- Enter an IP and hit Run — output streams live to the terminal panel
-- `[★]` findings automatically collected into a separate findings panel
-- Flag toggles for `--quick`, `--vuln`, `--resume`, `--domain`
-- Stop button, autoscroll toggle, copy output
-- Live elapsed timer and status indicator
-
 > The web UI is intended for more visually appealing local use only. Security risks if actually exposed publicly
 
 ---
@@ -115,7 +108,7 @@ Features:
 
 **Required:**
 - Python 3.8+
-- [RustScan](https://github.com/RustScan/RustScan) — `cargo install rustscan`
+- [RustScan](https://github.com/RustScan/RustScan) `cargo install rustscan`
 - nmap
 
 **Recommended (auto-skipped if missing):**
@@ -144,27 +137,14 @@ Features:
 pip3 install flask flask-socketio eventlet
 ```
 
-**Wordlists** (auto-detected across common locations):
-- SecLists — `sudo apt install seclists`
-- dirbuster wordlists — `sudo apt install dirb`
-
-Wordlist paths are resolved automatically across `/usr/share/wordlists`, `/usr/share/seclists`, `/opt/wordlists`, and `~/wordlists` — no config edits needed.
-
 ---
 
 ## Color Guide
 
 | Color | Meaning |
 |-------|---------|
-| 🟣 `[★]` magenta | Interesting finding — look at this |
+| 🟣 `[★]` magenta | Interesting finding |
 | 🟢 `[+]` green | Success / open port / 200 response |
 | 🔵 `[*]` blue | Info / running command |
 | 🟡 `[!]` yellow | Warning / redirect / unusual port |
 | 🔴 `[✗]` red | Error / CVE / vulnerable / anonymous access |
-
-
----
-
-## Author
-
-**Alyssa Meczkowska** — [@AlyssaVMeczkowska](https://github.com/AlyssaVMeczkowska)
