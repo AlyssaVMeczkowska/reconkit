@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-ReconKit Web — Flask + SocketIO backend
-Streams reconkit.py output live to the browser.
-"""
 
 import os
 import re
@@ -18,10 +14,8 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.urandom(24).hex()
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
-# Path to reconkit.py — assumes it's in the same directory or on PATH
 RECONKIT_PATH = Path(__file__).parent / "reconkit.py"
 
-# Track active scans per session
 active_scans = {}
 
 ANSI_TO_CLASS = [
