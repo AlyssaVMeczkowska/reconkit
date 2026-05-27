@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# ReconKit Web launcher
-# Place reconkit.py in the same directory as app.py before running
 
 set -e
 cd "$(dirname "$0")"
