@@ -42,7 +42,6 @@
       overflow-x: hidden;
     }
 
-    /* ── Grid background ── */
     body::before {
       content: '';
       position: fixed;
@@ -55,7 +54,6 @@
       z-index: 0;
     }
 
-    /* ── Scanline overlay ── */
     body::after {
       content: '';
       position: fixed;
@@ -79,7 +77,6 @@
       padding: 2rem 1.5rem 4rem;
     }
 
-    /* ── Header ── */
     header {
       text-align: center;
       padding: 3rem 0 2.5rem;
@@ -132,7 +129,6 @@
     .github-link span { color: var(--red); }
     .github-link:hover { color: var(--white); }
 
-    /* ── Control panel ── */
     .panel {
       background: var(--bg2);
       border: 1px solid var(--border);
@@ -160,7 +156,6 @@
       margin-bottom: 1.2rem;
     }
 
-    /* ── IP input row ── */
     .input-row {
       display: flex;
       gap: 0.75rem;
@@ -203,7 +198,6 @@
 
     input[type="text"]::placeholder { color: var(--dim); }
 
-    /* ── Flags ── */
     .flags {
       display: flex;
       flex-wrap: wrap;
@@ -238,7 +232,6 @@
     }
     .domain-wrap.show { display: block; }
 
-    /* ── Run button ── */
     .run-btn {
       background: transparent;
       border: 1px solid var(--red);
@@ -401,7 +394,6 @@
       opacity: 0.3;
     }
 
-    /* ── Output line types ── */
     .line { display: flex; gap: 0.75rem; animation: fadeIn 0.1s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; } }
 
@@ -424,7 +416,7 @@
     .line.info     .line-content { color: var(--dim); }
     .line.output   .line-content { color: #8899aa; }
 
-    /* ANSI color classes */
+
     .c-red     { color: var(--red); }
     .c-green   { color: var(--green); }
     .c-yellow  { color: var(--yellow); }
@@ -435,7 +427,6 @@
     .c-bold    { font-weight: 700; }
     .c-dim     { color: var(--dim); }
 
-    /* ── Findings sidebar ── */
     .findings-panel {
       background: var(--bg2);
       border: 1px solid var(--border);
@@ -500,7 +491,6 @@
       text-align: center;
     }
 
-    /* ── Footer ── */
     footer {
       text-align: center;
       padding: 2rem 0 0;
@@ -509,7 +499,6 @@
       letter-spacing: 0.08em;
     }
 
-    /* ── Responsive ── */
     @media (max-width: 600px) {
       .input-row { flex-direction: column; }
       .run-btn { padding: 0.85rem; }
@@ -520,7 +509,6 @@
 <body>
 <div class="wrap">
 
-  <!-- Header -->
   <header>
     <div class="logo-ascii">
   ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗██╗  ██╗██╗████████╗
@@ -537,7 +525,6 @@
     </a>
   </header>
 
-  <!-- Control Panel -->
   <div class="panel">
     <div class="panel-title">// target configuration</div>
 
@@ -564,14 +551,12 @@
     </div>
   </div>
 
-  <!-- Status bar -->
   <div class="status-bar">
     <div class="status-dot" id="status-dot"></div>
     <span class="status-text" id="status-text">ready</span>
     <span class="status-timer" id="status-timer"></span>
   </div>
 
-  <!-- Terminal -->
   <div class="terminal">
     <div class="terminal-header">
       <div class="term-dot r"></div>
@@ -592,7 +577,6 @@
     </div>
   </div>
 
-  <!-- Findings panel -->
   <div class="findings-panel">
     <div class="findings-header">
       ★ findings
@@ -618,7 +602,6 @@
   let findings   = [];
   let rawLines   = [];
 
-  // ── Flag toggles ─────────────────────────
   function toggleFlag(btn) {
     btn.classList.toggle('active');
   }
@@ -639,7 +622,6 @@
     return flags;
   }
 
-  // ── Scan control ──────────────────────────
   function startScan() {
     const target = document.getElementById('ip-input').value.trim();
     if (!target) { flashInput(); return; }
@@ -663,7 +645,6 @@
     socket.emit('stop_scan');
   }
 
-  // ── Output rendering ──────────────────────
   function appendLine(data) {
     const empty = document.getElementById('empty-state');
     if (empty) empty.remove();
@@ -698,7 +679,6 @@
     list.scrollTop = list.scrollHeight;
   }
 
-  // ── Status helpers ────────────────────────
   function setStatus(state, msg) {
     const dot  = document.getElementById('status-dot');
     const text = document.getElementById('status-text');
@@ -725,7 +705,6 @@
     btn.disabled = false;
   }
 
-  // ── Utility ───────────────────────────────
   function clearOutput() {
     const out = document.getElementById('output');
     out.innerHTML = '<div class="empty-state" id="empty-state"><div class="empty-icon">⬡</div><div>enter a target ip and run the scan</div></div>';
@@ -755,12 +734,10 @@
     }, 600);
   }
 
-  // ── Enter key ─────────────────────────────
   document.getElementById('ip-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') startScan();
   });
 
-  // ── Socket events ─────────────────────────
   socket.on('scan_start', data => {
     appendLine({ type: 'info', ts: now(), html: `<span class="c-dim">$ python3 reconkit.py ${data.target}</span>`, raw: '' });
   });
