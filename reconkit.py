@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""
-ReconKit — Automated Recon & Enumeration
-github.com/AlyssaVMeczkowska
-
-Usage:
-  python3 reconkit <target_ip> [options]
-
-Options:
-  --vuln          Run vuln scans (sqlmap, nmap vuln scripts, nuclei)
-  --domain <d>    Domain for subdomain/vhost enumeration
-  --quick         Fast mode — skip nikto, sqlmap, vuln scripts
-  --no-parallel   Run sequentially instead of parallel web tasks
-  --resume        Skip phases whose output files already exist
-"""
 
 import argparse
 import os
@@ -26,10 +12,6 @@ import urllib.error
 from datetime import datetime
 from pathlib import Path
 
-
-# ─────────────────────────────────────────
-#  COLORS
-# ─────────────────────────────────────────
 class C:
     RESET   = "\033[0m"
     BOLD    = "\033[1m"
@@ -63,11 +45,6 @@ def finding(msg): print(f"{C.MAGENTA}[★]{C.RESET} {C.BOLD}{C.MAGENTA}{msg}{C.R
 def phase_time(msg, elapsed): print(f"{C.DIM}    ↳ {msg} completed in {elapsed}{C.RESET}", flush=True)
 def section(msg): print(f"\n{C.CYAN}{C.BOLD}{'─'*55}\n  {msg}\n{'─'*55}{C.RESET}", flush=True)
 
-
-# ─────────────────────────────────────────
-#  CONFIG  — edit these to match your system
-# ─────────────────────────────────────────
-# Auto-detect rustscan binary — checks PATH first, then common locations
 def _find_rustscan():
     # Check PATH first
     found = shutil.which("rustscan")
@@ -93,7 +70,6 @@ def _find_wordlist(*candidates):
             return c
     return None
 
-# Common wordlist search locations across Kali, Parrot, BlackArch, etc.
 _WL_ROOTS = [
     "/usr/share/wordlists",
     "/usr/share/seclists",
@@ -135,10 +111,6 @@ RDP_PORTS      = {3389}
 VNC_PORTS      = {5900, 5901}
 SNMP_SENTINEL  = 999161   # fake port used as flag when UDP 161 found
 
-
-# ─────────────────────────────────────────
-#  STREAM HIGHLIGHT PATTERNS
-# ─────────────────────────────────────────
 _HIGHLIGHTS = [
     (r"CVE-\d{4}-\d+",                                                       C.RED),
     (r"VULNERABLE",                                                           C.RED),
@@ -168,10 +140,6 @@ def _highlight_line(line):
             finding(f"{color}{line.strip()}{C.RESET}")
             return
 
-
-# ─────────────────────────────────────────
-#  HELPERS
-# ─────────────────────────────────────────
 def check_tool(name):
     if shutil.which(name) is None:
         warn(f"{name} not found in PATH — skipping")
@@ -231,10 +199,6 @@ def run_parallel(tasks):
     for t in threads: t.start()
     for t in threads: t.join()
 
-
-# ─────────────────────────────────────────
-#  PHASE 1 — RUSTSCAN + UDP
-# ─────────────────────────────────────────
 def run_rustscan(target, outdir, resume=False):
     section("PHASE 1 — RustScan (TCP) + UDP Scan")
     start = datetime.now()
@@ -283,10 +247,6 @@ def run_rustscan(target, outdir, resume=False):
     notify("reconkit — Ports found", f"{target}: {tcp_ports}")
     return open_ports
 
-
-# ─────────────────────────────────────────
-#  PHASE 2 — WEB ENUM
-# ─────────────────────────────────────────
 def _fetch_web_file(base_url, path, outdir, proto, port):
     """Silently try to fetch a well-known file and save it if found."""
     import base64
@@ -403,31 +363,26 @@ def phase_web(target, port, proto, outdir, quick=False, resume=False):
     base_url = f"{proto}://{target}:{port}"
     ssl_flag = ["-k"] if proto == "https" else []
 
-    # ── Well-known files ──────────────────
     for path in ["robots.txt", "sitemap.xml", ".htaccess", "crossdomain.xml", "security.txt"]:
         _fetch_web_file(base_url, path, outdir, proto, port)
 
-    # ── curl header grab ──────────────────
     if check_tool("curl"):
         run(["curl", "-sI", "--max-time", "10"] + ssl_flag + [base_url],
             outfile=f"{outdir}/headers_{proto}_{port}.txt",
             timeout=15, label=f"curl headers {proto}:{port}")
 
-    # ── WhatWeb ───────────────────────────
     if check_tool("whatweb"):
         ww_out = f"{outdir}/whatweb_{proto}_{port}.txt"
         if not (resume and skip_if_exists(ww_out, f"whatweb {proto}:{port}")):
             run(["whatweb", "--color=never", "-a", "3", base_url],
                 outfile=ww_out, timeout=60, label=f"whatweb {proto}:{port}")
 
-    # ── WAF detection ─────────────────────
     if check_tool("wafw00f"):
         waf_out = f"{outdir}/wafw00f_{proto}_{port}.txt"
         if not (resume and skip_if_exists(waf_out, "wafw00f")):
             run(["wafw00f", base_url],
                 outfile=waf_out, timeout=30, label=f"wafw00f {proto}:{port}")
 
-    # ── Dir enum: feroxbuster > gobuster ──
     if check_tool("feroxbuster"):
         fb_out = f"{outdir}/feroxbuster_{proto}_{port}.txt"
         if not (resume and skip_if_exists(fb_out, f"feroxbuster {proto}:{port}")):
@@ -446,14 +401,12 @@ def phase_web(target, port, proto, outdir, quick=False, resume=False):
                     "-t", "50", "-o", gb_out, "--no-error", "-q",
                 ] + ssl_flag, timeout=600, label=f"gobuster {proto}:{port}")
 
-    # ── Default cred check ────────────────
     _check_default_creds(base_url, proto, port, outdir)
 
     if quick:
         phase_time(f"Web enum {proto}:{port} (quick)", elapsed_str(start))
         return
 
-    # ── Nikto ─────────────────────────────
     if check_tool("nikto"):
         nikto_out = f"{outdir}/nikto_{proto}_{port}.txt"
         if not (resume and skip_if_exists(nikto_out, f"nikto {proto}:{port}")):
@@ -462,7 +415,6 @@ def phase_web(target, port, proto, outdir, quick=False, resume=False):
                 + (["-ssl"] if proto == "https" else []),
                 timeout=360, label=f"nikto {proto}:{port}")
 
-    # ── Nuclei ────────────────────────────
     if check_tool("nuclei"):
         nc_out = f"{outdir}/nuclei_{proto}_{port}.txt"
         if not (resume and skip_if_exists(nc_out, f"nuclei {proto}:{port}")):
@@ -472,7 +424,6 @@ def phase_web(target, port, proto, outdir, quick=False, resume=False):
                 "-o", nc_out, "-silent"
             ], timeout=300, label=f"nuclei {proto}:{port}")
 
-    # ── Gowitness screenshot ──────────────
     if check_tool("gowitness"):
         gw_out = f"{outdir}/screenshots"
         os.makedirs(gw_out, exist_ok=True)
@@ -480,7 +431,6 @@ def phase_web(target, port, proto, outdir, quick=False, resume=False):
             timeout=30, stream=False, label=f"gowitness {proto}:{port}")
         success(f"Screenshot → {gw_out}/")
 
-    # ── WordPress → wpscan ───────────────
     ww_file = f"{outdir}/whatweb_{proto}_{port}.txt"
     if os.path.exists(ww_file) and re.search(r"WordPress", Path(ww_file).read_text(), re.I):
         finding(f"{C.YELLOW}[WordPress detected on {proto}:{port}] Running wpscan...{C.RESET}")
@@ -495,10 +445,6 @@ def phase_web(target, port, proto, outdir, quick=False, resume=False):
     phase_time(f"Web enum {proto}:{port}", elapsed_str(start))
     notify("reconkit — Web enum done", f"{proto}://{target}:{port} finished")
 
-
-# ─────────────────────────────────────────
-#  PHASE 2 — OTHER SERVICES
-# ─────────────────────────────────────────
 def phase_smb(target, outdir, resume=False):
     section("SMB ENUM")
     start = datetime.now()
@@ -604,10 +550,6 @@ def phase_kerberos(target, outdir, resume=False):
             timeout=60, label="nmap kerberos scripts")
     phase_time("Kerberos enum", elapsed_str(start))
 
-
-# ─────────────────────────────────────────
-#  PHASE 3 — VULN SCANNING
-# ─────────────────────────────────────────
 def phase_sqlmap(target, port, proto, outdir, resume=False):
     if not check_tool("sqlmap"):
         return
@@ -637,10 +579,6 @@ def phase_vuln_nmap(target, open_ports, outdir, resume=False):
         timeout=600, label="nmap vuln scripts")
     phase_time("Nmap vuln scripts", elapsed_str(start))
 
-
-# ─────────────────────────────────────────
-#  EXTRAS
-# ─────────────────────────────────────────
 def phase_searchsploit(outdir):
     if not check_tool("searchsploit"):
         return
@@ -721,11 +659,7 @@ def generate_report(target, open_ports, outdir, start_time):
     print(f"  Results   : {outdir}/")
     print(f"{'═'*55}{C.RESET}\n")
     success(f"Full report → {report_path}")
-
-
-# ─────────────────────────────────────────
-#  MAIN
-# ─────────────────────────────────────────
+  
 def main():
     banner()
 
@@ -754,13 +688,12 @@ def main():
     success(f"Target  : {C.BOLD}{target}{C.RESET}")
     success(f"Output  : {C.BOLD}{outdir}/{C.RESET}")
     success(f"Started : {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    if args.quick:  warn("Quick mode — nikto / sqlmap / vuln scripts skipped")
+    if args.quick:  warn("Quick mode: nikto / sqlmap / vuln scripts skipped")
     if args.vuln:   warn("Vuln mode ON — sqlmap + nmap vuln + nuclei will run")
-    if args.resume: warn("Resume mode — existing outputs will be skipped")
+    if args.resume: warn("Resume mode: existing outputs will be skipped")
 
     notify("reconkit started", f"Target: {target}")
 
-    # Phase 1 — port scan
     open_ports = run_rustscan(target, outdir, resume=args.resume)
     if not open_ports:
         warn("No open ports found. Is the target reachable?")
@@ -768,7 +701,6 @@ def main():
 
     flag_unusual_ports(open_ports, outdir)
 
-    # Phase 2 — service enum
     web_tasks = []
     smb_done  = False
 
@@ -810,14 +742,11 @@ def main():
         info(f"Launching {len(web_tasks)} web enum task(s) in parallel...")
         run_parallel(web_tasks)
 
-    # Subdomain enum
     if args.domain:
         phase_subdomain(target, args.domain, outdir, resume=args.resume)
 
-    # Searchsploit
     phase_searchsploit(outdir)
 
-    # Phase 3 — vuln scans
     if args.vuln and not args.quick:
         phase_vuln_nmap(target, open_ports, outdir, resume=args.resume)
         for port in sorted(p for p in open_ports if p < 99999):
@@ -826,11 +755,10 @@ def main():
             if port in HTTPS_PORTS:
                 phase_sqlmap(target, port, "https", outdir, resume=args.resume)
 
-    # Report
     generate_report(target, open_ports, outdir, start_time)
 
     elapsed = datetime.now() - start_time
-    notify("reconkit — DONE ✓",
+    notify("reconkit DONE",
            f"{target} | {str(elapsed).split('.')[0]} | Results in {outdir}/")
 
 
